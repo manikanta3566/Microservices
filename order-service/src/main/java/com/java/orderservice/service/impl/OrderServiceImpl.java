@@ -21,10 +21,10 @@ import java.util.stream.Collectors;
 public class OrderServiceImpl implements OrderService {
     private final OrderRepository orderRepository;
     private final ModelMapper modelMapper;
-    private final WebClient webClient;
+    private final WebClient.Builder webClient;
 
     @Override
-    public OrderResonseDTO placeOrder(OrderRequestDto orderRequestDto) {
+    public String placeOrder(OrderRequestDto orderRequestDto) {
         Order order = new Order();
         order.setOrderNumber(UUID.randomUUID().toString());
         order.setOrderItems(orderRequestDto.getOrderItemsDTO().stream().map(orderItems -> new OrderItems(orderItems.getItemName(), orderItems.getPrice(), orderItems.getQuantity(), order)).collect(Collectors.toList()));
@@ -33,8 +33,8 @@ public class OrderServiceImpl implements OrderService {
 InventoryRequest inventoryRequest=new InventoryRequest();
 inventoryRequest.setItemsList(itemNames);
         //calling inventory service for checking order is in stock or not
-        InventoryResponse[] itemsInStocks = webClient.post()
-                .uri("http://localhost:8082/v0/api/inventory")
+        InventoryResponse[] itemsInStocks = webClient.build().post()
+                .uri("http://inventory-service/v0/api/inventory")
                 .bodyValue(inventoryRequest)
                 .retrieve()
                 .bodyToMono(InventoryResponse[].class)
@@ -50,6 +50,6 @@ inventoryRequest.setItemsList(itemNames);
         orderResonseDTO.setOrderNumber(savedOrder.getOrderNumber());
         orderResonseDTO.setId(savedOrder.getId());
         orderResonseDTO.setOrderItemsDto(savedOrder.getOrderItems().stream().map(orderItems -> new OrderItemsDTO(orderItems.getItemName(), orderItems.getPrice(), orderItems.getQuantity())).collect(Collectors.toList()));
-        return orderResonseDTO;
+        return "order placed successfully";
     }
 }

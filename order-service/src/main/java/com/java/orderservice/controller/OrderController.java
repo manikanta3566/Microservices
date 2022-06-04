@@ -18,7 +18,7 @@ public class OrderController {
     private final OrderService orderService;
 
     @PostMapping
-    public ResponseEntity<OrderResonseDTO> placeOrder(@RequestBody OrderRequestDto orderRequestDto) {
+    public ResponseEntity<String> placeOrder(@RequestBody OrderRequestDto orderRequestDto) {
         return new ResponseEntity<>(orderService.placeOrder(orderRequestDto), HttpStatus.CREATED);
     }
 }
