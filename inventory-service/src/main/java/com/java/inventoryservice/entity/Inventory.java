@@ -18,5 +18,5 @@ public class Inventory {
     @GeneratedValue(strategy = GenerationType.AUTO)
     private Long id;
     private String itemName;
-    private String quantity;
+    private Long quantity;
 }

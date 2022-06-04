@@ -3,8 +3,8 @@ package com.java.inventoryservice.repository;
 import com.java.inventoryservice.entity.Inventory;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import java.util.Optional;
+import java.util.List;
 
 public interface InventoryRepository extends JpaRepository<Inventory,Long> {
-    Optional<Inventory> findByItemName(String itemName);
+    List<Inventory> findByItemNameIn(List<String> itemName);
 }

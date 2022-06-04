@@ -24,11 +24,11 @@ public class InventoryServiceApplication {
     void addStocksToDb() {
         Inventory i1 = new Inventory();
         i1.setItemName("iphone 12");
-        i1.setQuantity("2");
+        i1.setQuantity(2L);
         inventoryRepository.save(i1);
         Inventory i2 = new Inventory();
         i2.setItemName("iphone 13");
-        i2.setQuantity("10");
+        i2.setQuantity(0L);
         inventoryRepository.save(i2);
     }
 }
