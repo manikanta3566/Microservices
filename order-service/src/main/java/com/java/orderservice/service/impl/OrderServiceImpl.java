@@ -7,6 +7,8 @@ import com.java.orderservice.repository.OrderRepository;
 import com.java.orderservice.service.OrderService;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
+import org.springframework.cloud.sleuth.Span;
+import org.springframework.cloud.sleuth.Tracer;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
@@ -22,6 +24,7 @@ public class OrderServiceImpl implements OrderService {
     private final OrderRepository orderRepository;
     private final ModelMapper modelMapper;
     private final WebClient.Builder webClient;
+    private final Tracer  tracer;
 
     @Override
     public String placeOrder(OrderRequestDto orderRequestDto) {
@@ -32,24 +35,33 @@ public class OrderServiceImpl implements OrderService {
         order.getOrderItems().stream().forEach(orderItems -> itemNames.add(orderItems.getItemName()));
 InventoryRequest inventoryRequest=new InventoryRequest();
 inventoryRequest.setItemsList(itemNames);
-        //calling inventory service for checking order is in stock or not
-        InventoryResponse[] itemsInStocks = webClient.build().post()
-                .uri("http://inventory-service/v0/api/inventory")
-                .bodyValue(inventoryRequest)
-                .retrieve()
-                .bodyToMono(InventoryResponse[].class)
-                .block();
-        boolean result = Arrays.stream(itemsInStocks).allMatch(InventoryResponse::isInStock);
-        Order savedOrder;
-        if (result) {
-            savedOrder = orderRepository.save(order);
-        } else {
-            throw new RuntimeException("out of stock try again later");
+
+        Span inventoryspan =tracer.nextSpan().name("inventoryspan");
+
+        try(Tracer.SpanInScope spanInScope = tracer.withSpan(inventoryspan.start())){
+            //calling inventory service for checking order is in stock or not
+            InventoryResponse[] itemsInStocks = webClient.build().post()
+                    .uri("http://inventory-service/v0/api/inventory")
+                    .bodyValue(inventoryRequest)
+                    .retrieve()
+                    .bodyToMono(InventoryResponse[].class)
+                    .block();
+            boolean result = Arrays.stream(itemsInStocks).allMatch(InventoryResponse::isInStock);
+            Order savedOrder;
+            if (result) {
+                savedOrder = orderRepository.save(order);
+            } else {
+                throw new RuntimeException("out of stock try again later");
+            }
+            OrderResonseDTO orderResonseDTO = new OrderResonseDTO();
+            orderResonseDTO.setOrderNumber(savedOrder.getOrderNumber());
+            orderResonseDTO.setId(savedOrder.getId());
+            orderResonseDTO.setOrderItemsDto(savedOrder.getOrderItems().stream().map(orderItems -> new OrderItemsDTO(orderItems.getItemName(), orderItems.getPrice(), orderItems.getQuantity())).collect(Collectors.toList()));
+            return "order placed successfully";
         }
-        OrderResonseDTO orderResonseDTO = new OrderResonseDTO();
-        orderResonseDTO.setOrderNumber(savedOrder.getOrderNumber());
-        orderResonseDTO.setId(savedOrder.getId());
-        orderResonseDTO.setOrderItemsDto(savedOrder.getOrderItems().stream().map(orderItems -> new OrderItemsDTO(orderItems.getItemName(), orderItems.getPrice(), orderItems.getQuantity())).collect(Collectors.toList()));
-        return "order placed successfully";
+       finally {
+           inventoryspan.end();
+       }
     }
+
 }
